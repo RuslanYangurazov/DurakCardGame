@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Дурак — онлайн</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+
+:root{
+  --felt-deep:#0b3d2e;
+  --felt-mid:#0f5138;
+  --felt-panel:#124a35;
+  --cream:#f1e9d2;
+  --cream-line:#d9cca0;
+  --brass:#c9a227;
+  --brass-light:#e8c766;
+  --red:#b23a2e;
+  --ink:#1b2430;
+  --ink-soft:#5a6472;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(ellipse at top, #146a45 0%, var(--felt-deep) 60%),
+    var(--felt-deep);
+  min-height:100vh;
+  font-family:'Inter',sans-serif;
+  color:var(--cream);
+  display:flex;
+  justify-content:center;
+  padding:20px 10px 50px;
+}
+#app{ width:100%; max-width:920px; }
+
+.title-row{ display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:4px; }
+.suit-badge{ width:42px; height:42px; flex-shrink:0; }
+h1.game-title{
+  font-family:'Playfair Display',serif; font-weight:900; font-size:clamp(26px,6vw,40px);
+  letter-spacing:2px; margin:0; text-align:center; color:var(--cream); text-shadow:0 2px 0 rgba(0,0,0,0.35);
+}
+.subtitle{ text-align:center; color:#bcd9c8; font-size:14px; margin:0 0 22px; }
+
+.card-box{
+  background:var(--felt-panel); border:1px solid rgba(201,162,39,0.35); border-radius:14px;
+  padding:22px; box-shadow:0 20px 40px rgba(0,0,0,0.35);
+}
+.field{ margin-bottom:16px; }
+.field label{ display:block; font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--brass-light); margin-bottom:6px; font-weight:600; }
+.field input{
+  width:100%; padding:12px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.15);
+  background:rgba(255,255,255,0.06); color:var(--cream); font-size:16px; font-family:'JetBrains Mono',monospace; letter-spacing:1px;
+}
+.row{ display:flex; gap:10px; flex-wrap:wrap; }
+.row > *{ flex:1; }
+button{ font-family:'Inter',sans-serif; font-weight:600; font-size:15px; padding:11px 16px; border-radius:8px; border:none; cursor:pointer; transition:transform .12s ease, filter .12s ease; }
+button:active{ transform:scale(0.97); }
+button.primary{ background:linear-gradient(180deg,var(--brass-light),var(--brass)); color:#2a220a; }
+button.primary:hover{ filter:brightness(1.08); }
+button.ghost{ background:transparent; color:var(--cream); border:1px solid rgba(255,255,255,0.25); }
+button.ghost:hover{ background:rgba(255,255,255,0.06); }
+button:disabled{ opacity:0.35; cursor:not-allowed; }
+.hint{ color:#a9cdb9; font-size:13px; line-height:1.5; margin-top:10px; }
+.error-msg{ color:#ffb3a3; font-size:13px; margin-top:8px; }
+.room-badge{
+  display:inline-flex; align-items:center; gap:8px; font-family:'JetBrains Mono',monospace; font-weight:700;
+  letter-spacing:3px; background:rgba(201,162,39,0.15); border:1px dashed var(--brass); padding:7px 14px; border-radius:8px;
+  color:var(--brass-light); font-size:16px;
+}
+.overlay-msg{ text-align:center; padding:30px 16px; }
+.overlay-msg h2{ font-family:'Playfair Display',serif; font-size:28px; margin:0 0 8px; color:var(--brass-light); }
+.overlay-msg p{ color:#bcd9c8; }
+
+.player-list{ display:flex; flex-direction:column; gap:8px; margin:16px 0; }
+.player-row{
+  display:flex; align-items:center; justify-content:space-between; padding:10px 14px;
+  background:rgba(255,255,255,0.05); border-radius:8px; border:1px solid rgba(255,255,255,0.08);
+}
+.player-row .pname{ font-weight:600; }
+.player-row .pslot{ font-family:'JetBrains Mono',monospace; font-size:11px; color:#8fbfa2; }
+
+/* ---- game screen ---- */
+.top-bar{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+.trump-chip{ display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); padding:6px 12px; border-radius:8px; font-size:14px; }
+.deck-chip{ display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); padding:6px 12px; border-radius:8px; font-size:13px; color:#bcd9c8; }
+
+.opponents-strip{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:18px; }
+.opp-chip{
+  display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 14px; border-radius:10px;
+  background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); min-width:88px;
+}
+.opp-chip.attacker{ border-color:var(--brass); box-shadow:0 0 0 1px var(--brass) inset; }
+.opp-chip.defender{ border-color:#7fa4c4; box-shadow:0 0 0 1px #7fa4c4 inset; }
+.opp-chip .oname{ font-size:13px; font-weight:600; }
+.opp-chip .orole{ font-size:10px; letter-spacing:0.5px; text-transform:uppercase; color:var(--brass-light); }
+.opp-chip .ocount{ font-family:'JetBrains Mono',monospace; font-size:12px; color:#bcd9c8; }
+.card-backs{ display:flex; }
+.card-back{
+  width:20px; height:28px; border-radius:3px; background:repeating-linear-gradient(45deg,#0f5138,#0f5138 3px,#1a6b48 3px,#1a6b48 6px);
+  border:1px solid var(--brass); margin-left:-12px;
+}
+.card-back:first-child{ margin-left:0; }
+
+.table-area{
+  min-height:120px; background:rgba(0,0,0,0.15); border:2px dashed rgba(255,255,255,0.12); border-radius:14px;
+  display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; padding:16px; margin-bottom:18px;
+}
+.table-empty{ color:#7fa88f; font-size:14px; font-style:italic; }
+.table-pair{ position:relative; width:56px; height:78px; }
+.playing-card{
+  width:56px; height:78px; border-radius:6px; background:var(--cream); border:1px solid var(--cream-line);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace;
+  font-weight:700; box-shadow:0 3px 6px rgba(0,0,0,0.4); position:absolute; top:0; left:0; cursor:default; user-select:none;
+}
+.playing-card .rank{ font-size:16px; line-height:1; }
+.playing-card .suit{ font-size:18px; line-height:1; }
+.playing-card.red{ color:var(--red); }
+.playing-card.black{ color:var(--ink); }
+.playing-card.pending{ top:10px; left:16px; box-shadow:0 0 0 2px var(--brass), 0 3px 6px rgba(0,0,0,0.4); }
+.playing-card.clickable{ cursor:pointer; }
+.playing-card.clickable:hover{ transform:translateY(-6px); }
+
+.action-bar{ display:flex; justify-content:center; gap:12px; margin-bottom:14px; flex-wrap:wrap; }
+
+.hand-row{ display:flex; justify-content:center; gap:8px; flex-wrap:wrap; padding:10px 0; }
+.hand-row .playing-card{ position:relative; transition:transform .12s ease; }
+.hand-row .playing-card.disabled{ opacity:0.5; }
+
+.status-line{ text-align:center; font-size:15px; margin-bottom:14px; min-height:22px; }
+.status-line.mine{ color:var(--brass-light); font-weight:700; }
+.status-line.theirs{ color:#bcd9c8; }
+
+.log-panel{ margin-top:18px; padding:12px 14px; background:rgba(0,0,0,0.15); border-radius:10px; font-size:12px; color:#9fc7ac; max-height:110px; overflow-y:auto; }
+.log-panel div{ margin-bottom:3px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ===================== КАРТЫ ===================== */
+const SUITS = ['S','H','D','C'];
+const SUIT_SYMBOL = { S:'♠', H:'♥', D:'♦', C:'♣' };
+const SUIT_COLOR  = { S:'black', H:'red', D:'red', C:'black' };
+const RANKS = ['2','3','4','5','6','7','8','9','T','J','Q','K','A'];
+const RANK_LABEL = { T:'10' };
+
+function rankOf(card){ return card[0]; }
+function suitOf(card){ return card[1]; }
+function rankValue(card){ return RANKS.indexOf(rankOf(card)) + 2; }
+function rankLabel(card){ const r = rankOf(card); return RANK_LABEL[r] || r; }
+
+function buildDeck(){
+  const d = [];
+  for(const s of SUITS) for(const r of RANKS) d.push(r+s);
+  return d;
+}
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+function canBeat(attackCard, defendCard, trumpSuit){
+  if(suitOf(defendCard) === suitOf(attackCard)) return rankValue(defendCard) > rankValue(attackCard);
+  if(suitOf(defendCard) === trumpSuit && suitOf(attackCard) !== trumpSuit) return true;
+  return false;
+}
+function sortHand(hand, trumpSuit){
+  return hand.slice().sort((a,b)=>{
+    const ta = suitOf(a)===trumpSuit ? 1:0, tb = suitOf(b)===trumpSuit ? 1:0;
+    if(ta!==tb) return ta-tb;
+    if(suitOf(a)!==suitOf(b)) return suitOf(a).localeCompare(suitOf(b));
+    return rankValue(a)-rankValue(b);
+  });
+}
+
+/* ===================== ХРАНИЛИЩЕ (Firebase) ===================== */
+const FIREBASE_DB_URL = 'https://seafight-26015-default-rtdb.firebaseio.com';
+const SLOTS = ['slot1','slot2','slot3','slot4'];
+
+function roomKey(code){ return 'durak_room_' + code.toUpperCase(); }
+
+function normalizeRoom(room){
+  if(!room) return room;
+  const hands = {};
+  SLOTS.forEach(s => { hands[s] = (room.hands && room.hands[s]) || []; });
+  return {
+    slots: room.slots || {},
+    order: room.order || [],
+    active: room.active || [],
+    hands: hands,
+    deck: room.deck || [],
+    trumpSuit: room.trumpSuit || null,
+    table: room.table || [],
+    attacker: room.attacker || null,
+    defender: room.defender || null,
+    started: !!room.started,
+    finished: room.finished || [],
+    loser: room.loser || null,
+    log: room.log || []
+  };
+}
+
+async function getRoom(code){
+  try{
+    const res = await fetch(FIREBASE_DB_URL + '/durak_rooms/' + roomKey(code) + '.json', { cache:'no-store' });
+    if(!res.ok){ state.lastStorageError = 'HTTP ' + res.status + ' при чтении'; return null; }
+    const data = await res.json();
+    return data ? normalizeRoom(data) : null;
+  }catch(e){ state.lastStorageError = (e&&e.message)||String(e); console.error('getRoom error', e); return null; }
+}
+async function setRoom(code, obj){
+  try{
+    const res = await fetch(FIREBASE_DB_URL + '/durak_rooms/' + roomKey(code) + '.json', {
+      method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(obj)
+    });
+    if(!res.ok) state.lastStorageError = 'HTTP ' + res.status + ' при записи';
+    return res.ok;
+  }catch(e){ state.lastStorageError = (e&&e.message)||String(e); console.error('setRoom error', e); return false; }
+}
+
+/* ===================== ИГРОВАЯ ЛОГИКА (чистые функции) ===================== */
+function nextActive(slot, activeArr){
+  const idx = activeArr.indexOf(slot);
+  if(idx === -1) return activeArr[0];
+  return activeArr[(idx+1) % activeArr.length];
+}
+function rotateStartingAt(arr, slot){
+  const idx = arr.indexOf(slot);
+  if(idx === -1) return arr.slice();
+  return arr.slice(idx).concat(arr.slice(0, idx));
+}
+function nextActiveFrom(order, active, fromSlot){
+  const n = order.length;
+  const idx = order.indexOf(fromSlot);
+  for(let i=1;i<=n;i++){
+    const cand = order[(idx+i) % n];
+    if(active.includes(cand)) return cand;
+  }
+  return active[0];
+}
+function addLog(room, text){
+  room.log = (room.log || []).concat([text]).slice(-8);
+}
+function refill(room, order){
+  order.forEach(s=>{
+    while(room.hands[s].length < 6 && room.deck.length > 0){
+      room.hands[s].push(room.deck.pop());
+    }
+  });
+}
+function checkFinishedAndAdvance(room, candidateAttacker){
+  const stillIn = [];
+  room.active.forEach(s=>{
+    if(room.hands[s].length === 0 && room.deck.length === 0){
+      room.finished.push(s);
+      addLog(room, (room.slots[s]?room.slots[s].name:s) + ' избавился от карт и выходит из игры!');
+    } else stillIn.push(s);
+  });
+  room.active = stillIn;
+  if(room.active.length <= 1){
+    room.loser = room.active.length === 1 ? room.active[0] : 'draw';
+    room.attacker = null; room.defender = null;
+    if(room.loser === 'draw') addLog(room, 'Ничья — колода закончилась одновременно у всех!');
+    else addLog(room, (room.slots[room.loser]?room.slots[room.loser].name:room.loser) + ' остаётся ДУРАКОМ!');
+    return;
+  }
+  let attacker = candidateAttacker;
+  if(!room.active.includes(attacker)) attacker = nextActiveFrom(room.order, room.active, candidateAttacker);
+  room.attacker = attacker;
+  room.defender = nextActive(attacker, room.active);
+}
+function endRoundBito(room){
+  const oldAttacker = room.attacker, oldDefender = room.defender;
+  room.table = [];
+  let order = rotateStartingAt(room.active, oldAttacker).filter(s=>s!==oldDefender).concat([oldDefender]);
+  refill(room, order);
+  addLog(room, 'Раунд завершён — бито! Теперь ходит ' + (room.slots[oldDefender]?room.slots[oldDefender].name:oldDefender));
+  checkFinishedAndAdvance(room, oldDefender);
+}
+function endRoundTake(room){
+  const oldAttacker = room.attacker, oldDefender = room.defender;
+  room.hands[oldDefender] = room.hands[oldDefender].concat(room.table.map(t=>t.a)).concat(room.table.filter(t=>t.d).map(t=>t.d));
+  room.table = [];
+  let order = rotateStartingAt(room.active, oldAttacker).filter(s=>s!==oldDefender);
+  refill(room, order);
+  const newAttacker = nextActive(oldDefender, room.active);
+  addLog(room, (room.slots[oldDefender]?room.slots[oldDefender].name:oldDefender) + ' забирает карты со стола.');
+  checkFinishedAndAdvance(room, newAttacker);
+}
+
+/* ===================== СОСТОЯНИЕ UI ===================== */
+let state = {
+  screen: 'lobby', // lobby | room | game | gameover
+  roomCode: '', myName: '', mySlot: null,
+  room: null, errorMsg: '', poller: null
+};
+
+function render(){
+  try{ renderInner(); }
+  catch(e){
+    console.error('Render error:', e);
+    const app = document.getElementById('app');
+    const div = document.createElement('div');
+    div.className = 'card-box';
+    div.innerHTML = `<p class="error-msg">⚠️ Ошибка отображения: <b>${(e&&e.message)||e}</b><br>Пришлите этот текст — быстро поправим.</p>`;
+    app.appendChild(div);
+  }
+}
+function renderInner(){
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  app.appendChild(header());
+  if(state.screen === 'lobby') app.appendChild(renderLobby());
+  else if(state.screen === 'room') app.appendChild(renderRoom());
+  else if(state.screen === 'game') app.appendChild(renderGame());
+  else if(state.screen === 'gameover') app.appendChild(renderGameOver());
+}
+
+function header(){
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `
+    <div class="title-row">
+      <svg class="suit-badge" viewBox="0 0 100 100">
+        <path d="M50 10 C 70 35, 90 45, 90 65 A 20 20 0 0 1 55 78 L 60 92 L 40 92 L 45 78 A 20 20 0 0 1 10 65 C 10 45, 30 35, 50 10 Z" fill="#c9a227"/>
+      </svg>
+      <h1 class="game-title">ДУРАК</h1>
+    </div>
+    <p class="subtitle">Онлайн-версия подкидного дурака — 2–4 игрока, разные устройства</p>
+  `;
+  return wrap;
+}
+
+/* ---------- LOBBY ---------- */
+function renderLobby(){
+  const card = document.createElement('div');
+  card.className = 'card-box';
+  card.innerHTML = `
+    <div class="field">
+      <label>Ваше имя</label>
+      <input id="nameInput" type="text" maxlength="24" placeholder="Например: Ратмир или Тимур" value="${state.myName}"/>
+    </div>
+    <div class="field">
+      <label>Код комнаты</label>
+      <input id="codeInput" type="text" maxlength="6" placeholder="Например: KRAB7" value="${state.roomCode}" style="text-transform:uppercase"/>
+    </div>
+    <div class="row">
+      <button class="primary" id="joinBtn">Войти в комнату</button>
+      <button class="ghost" id="randomBtn">Создать новый код</button>
+    </div>
+    <p class="hint">Один игрок создаёт код и делится им с остальными (2–4 человека). Каждый открывает эту же страницу на своём устройстве и вводит один и тот же код.</p>
+    ${state.errorMsg ? `<p class="error-msg">${state.errorMsg}</p>` : ''}
+  `;
+  card.querySelector('#randomBtn').onclick = () => {
+    card.querySelector('#codeInput').value = Math.random().toString(36).substring(2,7).toUpperCase();
+  };
+  card.querySelector('#joinBtn').onclick = async () => {
+    const name = card.querySelector('#nameInput').value.trim();
+    const code = card.querySelector('#codeInput').value.trim().toUpperCase();
+    if(!name || !code){ state.errorMsg = 'Введите имя и код комнаты.'; render(); return; }
+    state.myName = name; state.roomCode = code; state.errorMsg = '';
+    await joinRoom();
+  };
+  return card;
+}
+
+async function joinRoom(){
+  let room = await getRoom(state.roomCode);
+  let mySlot = null;
+  if(!room){
+    room = { slots:{ slot1:{name:state.myName} }, order:[], active:[], hands:{}, deck:[], trumpSuit:null,
+      table:[], attacker:null, defender:null, started:false, finished:[], loser:null, log:[] };
+    room = normalizeRoom(room);
+    const ok = await setRoom(state.roomCode, room);
+    if(!ok){ state.errorMsg = 'Не удалось создать комнату — проверьте интернет.'; render(); return; }
+    mySlot = 'slot1';
+  } else {
+    for(const s of SLOTS){ if(room.slots[s] && room.slots[s].name.toLowerCase() === state.myName.toLowerCase()){ mySlot = s; break; } }
+    if(!mySlot){
+      if(room.started){ state.errorMsg = 'Игра в этой комнате уже началась — новых игроков принять нельзя.'; render(); return; }
+      let empty = null;
+      for(const s of SLOTS){ if(!room.slots[s]){ empty = s; break; } }
+      if(!empty){ state.errorMsg = 'Комната уже заполнена (максимум 4 игрока).'; render(); return; }
+      room.slots[empty] = { name: state.myName };
+      const ok = await setRoom(state.roomCode, room);
+      if(!ok){ state.errorMsg = 'Не удалось подключиться — проверьте интернет.'; render(); return; }
+      mySlot = empty;
+    }
+  }
+  state.mySlot = mySlot;
+  state.room = room;
+  startPolling();
+  updateScreen();
+}
+
+function startPolling(){
+  if(state.poller) clearInterval(state.poller);
+  state.poller = setInterval(async () => {
+    try{
+      if(state.screen === 'lobby') return;
+      const room = await getRoom(state.roomCode);
+      if(!room) return;
+      state.room = room;
+      updateScreen();
+    }catch(e){ console.error('Polling error:', e); }
+  }, 2000);
+}
+function updateScreen(){
+  const room = state.room;
+  if(!room){ render(); return; }
+  if(room.loser) state.screen = 'gameover';
+  else if(room.started) state.screen = 'game';
+  else state.screen = 'room';
+  render();
+}
+
+/* ---------- ROOM (waiting/lobby) ---------- */
+function renderRoom(){
+  const room = state.room;
+  const occupied = SLOTS.filter(s=>room.slots[s]);
+  const card = document.createElement('div');
+  card.className = 'card-box';
+  card.innerHTML = `<div style="text-align:center;"><div class="room-badge">${state.roomCode}</div></div>`;
+
+  const list = document.createElement('div');
+  list.className = 'player-list';
+  occupied.forEach(s=>{
+    const row = document.createElement('div');
+    row.className = 'player-row';
+    row.innerHTML = `<span class="pname">${room.slots[s].name}${s===state.mySlot?' (вы)':''}</span><span class="pslot">${s}</span>`;
+    list.appendChild(row);
+  });
+  card.appendChild(list);
+
+  const info = document.createElement('p');
+  info.className = 'hint';
+  info.style.textAlign = 'center';
+  info.textContent = occupied.length < 2
+    ? 'Ждём ещё хотя бы одного игрока…'
+    : 'Можно начинать (2–4 игрока), или подождать остальных — максимум 4.';
+  card.appendChild(info);
+
+  if(occupied.length >= 2){
+    const btnWrap = document.createElement('div');
+    btnWrap.style.textAlign = 'center';
+    btnWrap.innerHTML = `<button class="primary" id="startBtn">Начать игру</button>`;
+    btnWrap.querySelector('#startBtn').onclick = startGame;
+    card.appendChild(btnWrap);
+  }
+  if(state.errorMsg){
+    const err = document.createElement('p');
+    err.className = 'error-msg';
+    err.style.textAlign = 'center';
+    err.textContent = state.errorMsg;
+    card.appendChild(err);
+  }
+  return card;
+}
+
+async function startGame(){
+  const fresh = await getRoom(state.roomCode);
+  if(!fresh){ state.errorMsg = 'Не удалось прочитать комнату.'; render(); return; }
+  if(fresh.started){ state.room = fresh; updateScreen(); return; }
+  const occupied = SLOTS.filter(s=>fresh.slots[s]);
+  if(occupied.length < 2){ state.errorMsg = 'Нужно минимум 2 игрока.'; render(); return; }
+
+  let deck = shuffle(buildDeck());
+  const hands = {};
+  occupied.forEach(s=>{ hands[s] = deck.splice(0,6); });
+  const trumpCard = deck[deck.length-1];
+  const trumpSuit = suitOf(trumpCard);
+
+  let attacker = occupied[0], minVal = 99;
+  occupied.forEach(s=>{
+    hands[s].forEach(c=>{
+      if(suitOf(c) === trumpSuit && rankValue(c) < minVal){ minVal = rankValue(c); attacker = s; }
+    });
+  });
+  const defender = nextActive(attacker, occupied);
+
+  fresh.order = occupied;
+  fresh.active = occupied.slice();
+  fresh.hands = hands;
+  fresh.deck = deck;
+  fresh.trumpSuit = trumpSuit;
+  fresh.table = [];
+  fresh.attacker = attacker;
+  fresh.defender = defender;
+  fresh.started = true;
+  fresh.finished = [];
+  fresh.loser = null;
+  fresh.log = ['Игра началась! Козырь — ' + SUIT_SYMBOL[trumpSuit] + '. Первым ходит ' + fresh.slots[attacker].name + '.'];
+
+  const ok = await setRoom(state.roomCode, fresh);
+  if(!ok){ state.errorMsg = 'Не удалось начать игру — проверьте интернет.'; render(); return; }
+  state.room = fresh;
+  updateScreen();
+}
+
+/* ---------- GAME ---------- */
+function playingCard(cardId, opts){
+  opts = opts || {};
+  const el = document.createElement('div');
+  el.className = 'playing-card ' + SUIT_COLOR[suitOf(cardId)];
+  if(opts.pending) el.className += ' pending';
+  if(opts.clickable) el.className += ' clickable';
+  if(opts.disabled) el.className += ' disabled';
+  el.innerHTML = `<div class="rank">${rankLabel(cardId)}</div><div class="suit">${SUIT_SYMBOL[suitOf(cardId)]}</div>`;
+  if(opts.onClick) el.onclick = opts.onClick;
+  return el;
+}
+
+function renderGame(){
+  const room = state.room;
+  const my = state.mySlot;
+  const myHand = sortHand(room.hands[my] || [], room.trumpSuit);
+  const isDefender = room.defender === my;
+  const isAttacker = room.attacker === my;
+  const table = room.table;
+  const lastPending = table.length > 0 && !table[table.length-1].d;
+
+  const wrap = document.createElement('div');
+
+  // top bar
+  const top = document.createElement('div');
+  top.className = 'top-bar';
+  top.innerHTML = `
+    <div class="room-badge" style="font-size:13px;padding:5px 10px;">${state.roomCode}</div>
+    <div class="trump-chip">Козырь: <b style="color:${SUIT_COLOR[room.trumpSuit]==='red'?'#e07a6a':'#f1e9d2'}">${SUIT_SYMBOL[room.trumpSuit]}</b></div>
+    <div class="deck-chip">В колоде: ${room.deck.length}</div>
+  `;
+  wrap.appendChild(top);
+
+  // opponents
+  const strip = document.createElement('div');
+  strip.className = 'opponents-strip';
+  room.active.filter(s=>s!==my).forEach(s=>{
+    const chip = document.createElement('div');
+    chip.className = 'opp-chip' + (room.attacker===s?' attacker':'') + (room.defender===s?' defender':'');
+    const backs = document.createElement('div');
+    backs.className = 'card-backs';
+    const n = Math.min(room.hands[s].length, 10);
+    for(let i=0;i<n;i++){ const b=document.createElement('div'); b.className='card-back'; backs.appendChild(b); }
+    chip.innerHTML = `<div class="oname">${room.slots[s].name}</div><div class="orole">${room.attacker===s?'Атакует':room.defender===s?'Защищается':''}</div>`;
+    chip.appendChild(backs);
+    const cnt = document.createElement('div'); cnt.className='ocount'; cnt.textContent = room.hands[s].length + ' карт';
+    chip.appendChild(cnt);
+    strip.appendChild(chip);
+  });
+  room.finished.filter(s=>s!==my).forEach(s=>{
+    const chip = document.createElement('div');
+    chip.className = 'opp-chip';
+    chip.style.opacity = '0.5';
+    chip.innerHTML = `<div class="oname">${room.slots[s].name}</div><div class="orole">🏆 вышел</div>`;
+    strip.appendChild(chip);
+  });
+  wrap.appendChild(strip);
+
+  // status line
+  const status = document.createElement('div');
+  let statusText, mine;
+  if(lastPending){
+    if(isDefender){ statusText = 'Отбивайтесь или берите карты'; mine = true; }
+    else { statusText = 'Ходит ' + room.slots[room.defender].name + ' — отбивается'; mine = false; }
+  } else if(table.length === 0){
+    if(isAttacker){ statusText = 'Ваш ход — выберите карту для атаки'; mine = true; }
+    else { statusText = 'Ходит ' + room.slots[room.attacker].name; mine = false; }
+  } else {
+    if(!isDefender){ statusText = 'Можно подкинуть карту или дождаться "Бито"'; mine = true; }
+    else { statusText = 'Ждём — остальные могут подкинуть карты'; mine = false; }
+  }
+  status.className = 'status-line ' + (mine ? 'mine':'theirs');
+  status.textContent = statusText;
+  wrap.appendChild(status);
+
+  // table
+  const tableArea = document.createElement('div');
+  tableArea.className = 'table-area';
+  if(table.length === 0){
+    tableArea.innerHTML = '<div class="table-empty">Стол пуст</div>';
+  } else {
+    table.forEach(pair=>{
+      const pairEl = document.createElement('div');
+      pairEl.className = 'table-pair';
+      pairEl.appendChild(playingCard(pair.a, {}));
+      if(pair.d) pairEl.appendChild(playingCard(pair.d, { pending:true }));
+      tableArea.appendChild(pairEl);
+    });
+  }
+  wrap.appendChild(tableArea);
+
+  // action bar
+  const actions = document.createElement('div');
+  actions.className = 'action-bar';
+  if(isDefender && table.length > 0){
+    const takeBtn = document.createElement('button');
+    takeBtn.className = 'ghost';
+    takeBtn.textContent = 'Взять карты';
+    takeBtn.onclick = () => doTake();
+    actions.appendChild(takeBtn);
+  }
+  if(isAttacker && table.length > 0 && !lastPending){
+    const bitoBtn = document.createElement('button');
+    bitoBtn.className = 'primary';
+    bitoBtn.textContent = 'Бито (закончить раунд)';
+    bitoBtn.onclick = () => doBito();
+    actions.appendChild(bitoBtn);
+  }
+  wrap.appendChild(actions);
+
+  // my hand
+  const canThrow = !isDefender && (table.length === 0 ? isAttacker : !lastPending) && table.length < 6;
+  const tableRanks = new Set(table.flatMap(p => [rankOf(p.a)].concat(p.d ? [rankOf(p.d)] : [])));
+  const handRow = document.createElement('div');
+  handRow.className = 'hand-row';
+  myHand.forEach(c=>{
+    let clickable = false, onClick = null;
+    if(isDefender && lastPending){
+      const target = table[table.length-1].a;
+      if(canBeat(target, c, room.trumpSuit)){ clickable = true; onClick = () => doDefend(c); }
+    } else if(canThrow){
+      const rankOk = table.length === 0 || tableRanks.has(rankOf(c));
+      if(rankOk){ clickable = true; onClick = () => doThrow(c); }
+    }
+    handRow.appendChild(playingCard(c, { clickable, disabled: !clickable, onClick }));
+  });
+  wrap.appendChild(handRow);
+
+  // log
+  if(room.log && room.log.length){
+    const log = document.createElement('div');
+    log.className = 'log-panel';
+    room.log.slice(-6).forEach(line=>{
+      const d = document.createElement('div');
+      d.textContent = line;
+      log.appendChild(d);
+    });
+    wrap.appendChild(log);
+  }
+
+  return wrap;
+}
+
+async function doThrow(cardId){
+  const fresh = await getRoom(state.roomCode);
+  if(!fresh){ return; }
+  const my = state.mySlot;
+  if(!fresh.active.includes(my) || my === fresh.defender) { state.room = fresh; render(); return; }
+  const lastPending = fresh.table.length > 0 && !fresh.table[fresh.table.length-1].d;
+  if(lastPending){ state.room = fresh; render(); return; }
+  if(fresh.table.length === 0 && fresh.attacker !== my){ state.room = fresh; render(); return; }
+  if(fresh.table.length >= 6){ state.room = fresh; render(); return; }
+  const hand = fresh.hands[my] || [];
+  if(!hand.includes(cardId)){ state.room = fresh; render(); return; }
+  const tableRanks = new Set(fresh.table.flatMap(p => [rankOf(p.a)].concat(p.d ? [rankOf(p.d)] : [])));
+  if(fresh.table.length > 0 && !tableRanks.has(rankOf(cardId))){ state.room = fresh; render(); return; }
+  if(fresh.hands[fresh.defender].length <= fresh.table.length){ state.room = fresh; render(); return; }
+
+  fresh.hands[my] = hand.filter(c=>c!==cardId);
+  fresh.table.push({ a: cardId, d: null });
+  addLog(fresh, fresh.slots[my].name + ' подкидывает ' + rankLabel(cardId) + SUIT_SYMBOL[suitOf(cardId)]);
+  const ok = await setRoom(state.roomCode, fresh);
+  if(!ok) console.warn('Не удалось сохранить ход');
+  state.room = fresh; render();
+}
+
+async function doDefend(cardId){
+  const fresh = await getRoom(state.roomCode);
+  if(!fresh){ return; }
+  const my = state.mySlot;
+  if(fresh.defender !== my || fresh.table.length === 0){ state.room = fresh; render(); return; }
+  const lastIdx = fresh.table.length - 1;
+  if(fresh.table[lastIdx].d){ state.room = fresh; render(); return; }
+  const hand = fresh.hands[my] || [];
+  if(!hand.includes(cardId)){ state.room = fresh; render(); return; }
+  if(!canBeat(fresh.table[lastIdx].a, cardId, fresh.trumpSuit)){ state.room = fresh; render(); return; }
+
+  fresh.hands[my] = hand.filter(c=>c!==cardId);
+  fresh.table[lastIdx].d = cardId;
+  addLog(fresh, fresh.slots[my].name + ' отбивается картой ' + rankLabel(cardId) + SUIT_SYMBOL[suitOf(cardId)]);
+  const ok = await setRoom(state.roomCode, fresh);
+  if(!ok) console.warn('Не удалось сохранить ход');
+  state.room = fresh; render();
+}
+
+async function doTake(){
+  const fresh = await getRoom(state.roomCode);
+  if(!fresh){ return; }
+  const my = state.mySlot;
+  if(fresh.defender !== my || fresh.table.length === 0){ state.room = fresh; render(); return; }
+  endRoundTake(fresh);
+  const ok = await setRoom(state.roomCode, fresh);
+  if(!ok) console.warn('Не удалось сохранить ход');
+  state.room = fresh; updateScreen();
+}
+
+async function doBito(){
+  const fresh = await getRoom(state.roomCode);
+  if(!fresh){ return; }
+  const my = state.mySlot;
+  if(fresh.attacker !== my || fresh.table.length === 0) { state.room = fresh; render(); return; }
+  const lastPending = !fresh.table[fresh.table.length-1].d;
+  if(lastPending){ state.room = fresh; render(); return; }
+  endRoundBito(fresh);
+  const ok = await setRoom(state.roomCode, fresh);
+  if(!ok) console.warn('Не удалось сохранить ход');
+  state.room = fresh; updateScreen();
+}
+
+/* ---------- GAME OVER ---------- */
+function renderGameOver(){
+  const room = state.room;
+  const card = document.createElement('div');
+  card.className = 'card-box';
+  let title, text;
+  if(room.loser === 'draw'){
+    title = '🤝 Ничья!';
+    text = 'Колода закончилась, и все игроки избавились от карт одновременно.';
+  } else if(room.loser === state.mySlot){
+    title = '🃏 Вы — Дурак!';
+    text = 'В этот раз не повезло. Сыграем ещё?';
+  } else {
+    title = '🏆 Вы победили!';
+    text = (room.slots[room.loser] ? room.slots[room.loser].name : 'Соперник') + ' остаётся Дураком.';
+  }
+  card.innerHTML = `<div class="overlay-msg"><h2>${title}</h2><p>${text}</p></div>`;
+  const btnWrap = document.createElement('div');
+  btnWrap.style.textAlign = 'center';
+  btnWrap.innerHTML = `<button class="primary" id="againBtn">Играть снова</button>`;
+  btnWrap.querySelector('#againBtn').onclick = async () => {
+    const fresh = await getRoom(state.roomCode);
+    if(!fresh) return;
+    fresh.started = false;
+    fresh.loser = null;
+    fresh.table = [];
+    fresh.hands = {};
+    fresh.deck = [];
+    fresh.finished = [];
+    fresh.active = [];
+    fresh.attacker = null;
+    fresh.defender = null;
+    fresh.log = ['Новая игра — жмите "Начать игру"'];
+    await setRoom(state.roomCode, fresh);
+    state.room = fresh;
+    updateScreen();
+  };
+  card.appendChild(btnWrap);
+  return card;
+}
+
+render();
+</script>
+</body>
+</html>
